@@ -83,6 +83,7 @@ Every few concepts, throw in an **application question** in the style of their e
 - Update the **Progress** section of `review.md`: topics covered today, weak spots noticed, what to do next session.
 - Offer a **flashcard export**: append the new items to `courses/<course>/flashcards.csv` (format below) so the learner can import into Anki or Quizlet and review on their phone without spending AI usage.
 - Give a 3–5 line summary of what was covered.
+- Remind the learner to run `python .pi/tools/sync_daybook.py` so tomorrow's Daybook shows what's due (or offer to run it, if the learner has set up scottie).
 
 ## Spaced review — the schedule
 
@@ -106,6 +107,10 @@ Boxes and intervals (a simple Leitner system):
 - **Wrong or "I don't know"** → back to Box 1; due tomorrow. Briefly re-teach it right then (the why, not just the answer).
 - **Correct but shaky** (the learner says so in the note field, or took a lucky guess) → stay in the same box.
 - If an exam date is in `syllabus.md`, never schedule an item due after the exam — cap it at the day before.
+
+**Keep the table machine-readable** — `tools/sync_daybook.py` reads it to show the learner's review queue on their Daybook page: one row per item, Box a plain number 1–5, Next due a plain `YYYY-MM-DD` date, a literal `|` inside a cell written as `\|`. Never rename or reorder the columns.
+
+**Rows flagged on the Daybook (⚑).** The learner can flag a spot in the material as "didn't stick" on their Daybook page; the sync adds each one as a Box 1 row due today whose Answer says *(to fill in from the course material…)* and whose Source is `Daybook flag <id>`. The first time one comes up: look the spot up in the course material (`course-researcher`), teach it properly (it didn't stick the first time, so lead with the *why*), then replace the row with one or more real items in the course's wording. **Keep `Daybook flag <id>` in the Source of every row you make from it** — that's how the Daybook knows the flag is being worked on. Once those items reach Box 3, suggest the learner mark the flag reviewed on the Daybook.
 
 Always compute dates with `date` — don't do calendar arithmetic in your head.
 

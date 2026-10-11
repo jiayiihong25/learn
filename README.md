@@ -57,24 +57,27 @@ Resulting layout:
       flashcards.csv   ← import into Anki / Quizlet
 ```
 
-### 2b. Or import your courses from the Daybook (scottie)
+### 2b. Or sync your courses with the Daybook (scottie)
 
-If you have a local checkout of [scottie](https://github.com/jiayiihong25/scottie) with its Drive service-account `.env` set up, you don't need to fill in course folders by hand. The importer reuses what scottie already pulls from the "JiaYi Courses" Drive folder for the Daybook:
+If you have a local checkout of [scottie](https://github.com/jiayiihong25/scottie) with its Drive service-account `.env` set up, you don't need to fill in course folders by hand, and the tutor and your Daybook stay in sync both ways through the "JiaYi Courses" Drive folder:
 
 ```bash
-# in the scottie checkout: download from Drive and extract text (no model calls, doesn't advance pacing)
-python -m drive_sync pull && python -m ingest
-
 # in ~/learning, with scottie's Python environment
-python .pi/tools/import_scottie.py --scottie ../scottie
+python .pi/tools/sync_daybook.py --scottie ../scottie
 ```
 
-Per course, this writes:
+One command, run after each study session (and whenever you add files to Drive). It:
 
-- `syllabus.md`: exam dates from `courses.yaml` and the weekly schedule from `schedule.yaml`, inside a generated block. Anything you add outside that block (exam formats, grading notes) is kept on the next import.
-- `drive/*.md`: every PDF, slide deck and notes file in that course's Drive folder, already converted to text, so you can skip markitdown.
+1. **Pulls Drive** in the scottie checkout and extracts the text (`drive_sync pull` + `ingest`: no model calls, doesn't move the Daybook's reading pace).
+2. **Refreshes `courses/<course>/`** for every course with files in Drive. Courses without files (yet) are skipped.
+   - `syllabus.md`: exam dates from `courses.yaml` and the weekly schedule from `schedule.yaml`, inside a generated block. Anything you add outside it (exam formats, grading notes) is kept.
+   - `drive/*.md`: every PDF, slide deck and notes file in that course's Drive folder as text, so you can skip markitdown.
+3. **Brings in your Daybook flags.** Every open "to relearn" flag (⚑ on the Daybook) is added to that course's `review.md` once, as a Box 1 item due today. The tutor teaches it the next time you study and keeps the link to the flag. Flags for courses with no files in Drive wait until the files arrive.
+4. **Sends your review queue to the Daybook.** Every course's review items go to Drive as `tutor_status.json`. The next morning's Daybook shows a **Review** panel with what's due per course, and tags flags the tutor has picked up with their box.
 
-Re-run both commands whenever you add files to Drive or change exam dates. Your progress (`review.md`, `flashcards.csv`) is never touched.
+Your progress (`review.md`, `flashcards.csv`) is only ever appended to (flags), never overwritten. Flags come from the morning Routine's export, so one you add today reaches the tutor after tomorrow morning's build. `--no-push` writes the status file without sending it; `import_scottie.py` alone just refreshes the course folders.
+
+One-time Drive setup: create `relearn.json` and `tutor_status.json` in the Drive folder, each containing `{}` (the service account can edit files but not create them). Contract: `scottie-display/docs/tutor-sync.md`.
 
 ### 3. Study
 
@@ -109,7 +112,7 @@ What the tutor does:
 - `skills/review/` — *(this fork)* a review-only session over what's due
 - `agents/course-researcher.md` — *(this fork)* finds what your course materials say about a topic
 - `templates/course/` — *(this fork)* starter folder for a course
-- `tools/import_scottie.py` — *(this fork)* builds course folders from the Daybook's data (scottie)
+- `tools/sync_daybook.py`, `tools/import_scottie.py` — *(this fork)* two-way sync with the Daybook (scottie): course folders and relearn flags in, review queue out
 - `skills/visualize/` — adds a correct, minimal diagram to a lesson when an idea is clearer as a picture
 - `extensions/ask-user-question/` — the agent asks you questions through a UI popup
 - `extensions/quiz/` — graded questions with instant feedback (✓/✗, correct answer, explanation)

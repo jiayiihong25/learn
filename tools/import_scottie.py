@@ -11,7 +11,10 @@ material the Daybook shows:
     courses/<course>/drive/*.md    one file per Drive source file, as text,
                                    with a heading per page/slide range
 
-It never touches review.md, flashcards.csv, notes/, readings/ or past-exams/.
+Only courses with files in Drive get a folder. It never touches review.md,
+flashcards.csv, notes/, readings/ or past-exams/. For the full two-way sync
+with the Daybook (relearn flags in, review status out), use sync_daybook.py,
+which runs this too.
 
 Usage, from the learning project root (the folder that contains .pi/):
 
@@ -147,27 +150,30 @@ def write_drive_notes(drive_dir: Path, chunks: list[dict]) -> dict[str, str]:
     return names
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--scottie", type=Path, default=Path("../scottie"), help="path to the scottie checkout")
-    parser.add_argument("--out", type=Path, default=Path("courses"), help="the tutor's courses folder")
-    args = parser.parse_args()
+def import_courses(scottie: Path, out: Path) -> dict[str, Path]:
+    """Writes a folder per course that has material in Drive. Returns {course: folder}.
 
-    data = args.scottie / "data"
+    Courses listed in courses.yaml or schedule.yaml but with no files in Drive
+    are skipped: there's nothing to teach from yet.
+    """
+    data = scottie / "data"
     index_path = data / "content_index.json"
     for needed in (data / "courses.yaml", index_path):
         if not needed.exists():
-            sys.exit(f"Missing {needed}. In {args.scottie}, run: python -m drive_sync pull && python -m ingest")
+            sys.exit(f"Missing {needed}. In {scottie}, run: python -m drive_sync pull && python -m ingest")
 
     exams = load_exams(data / "courses.yaml")
     schedule = load_schedule(data / "schedule.yaml")
-    chunks = load_chunks(index_path)
     by_course: dict[str, list[dict]] = defaultdict(list)
-    for c in chunks:
+    for c in load_chunks(index_path):
         by_course[c["course"]].append(c)
 
-    for course in sorted(set(exams) | set(schedule) | set(by_course)):
-        folder = args.out / safe_name(course)
+    for course in sorted((set(exams) | set(schedule)) - set(by_course)):
+        print(f"- {course}: skipped, no course files in Drive yet")
+
+    folders: dict[str, Path] = {}
+    for course in sorted(by_course):
+        folder = out / safe_name(course)
         new = not folder.exists()
         folder.mkdir(parents=True, exist_ok=True)
         for sub in ("notes", "readings", "past-exams"):
@@ -175,10 +181,20 @@ def main() -> None:
         for keep in ("review.md", "flashcards.csv"):
             if not (folder / keep).exists():
                 shutil.copy(TEMPLATE / keep, folder / keep)
-        drive_files = write_drive_notes(folder / "drive", by_course.get(course, []))
+        drive_files = write_drive_notes(folder / "drive", by_course[course])
         write_syllabus(folder / "syllabus.md", course, generated_block(course, exams.get(course, []), schedule.get(course, []), drive_files))
         print(f"{'+' if new else '~'} {folder}: {len(drive_files)} Drive files, "
               f"{len(exams.get(course, []))} exams, {len(schedule.get(course, []))} schedule weeks")
+        folders[course] = folder
+    return folders
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--scottie", type=Path, default=Path("../scottie"), help="path to the scottie checkout")
+    parser.add_argument("--out", type=Path, default=Path("courses"), help="the tutor's courses folder")
+    args = parser.parse_args()
+    import_courses(args.scottie, args.out)
 
 
 if __name__ == "__main__":
