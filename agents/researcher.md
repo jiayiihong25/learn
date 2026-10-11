@@ -1,8 +1,7 @@
 ---
 name: researcher
-description: Web researcher — searches the web and synthesizes findings
+description: Web researcher — searches the web and synthesizes findings. Fallback for facts the course materials (course-researcher) do not cover.
 tools: web_search, web_fetch, safe_bash
-model: openrouter/z-ai/glm-5.3
 thinking: medium
 system-prompt: append
 auto-exit: true
