@@ -57,6 +57,25 @@ Resulting layout:
       flashcards.csv   ← import into Anki / Quizlet
 ```
 
+### 2b. Or import your courses from the Daybook (scottie)
+
+If you have a local checkout of [scottie](https://github.com/jiayiihong25/scottie) with its Drive service-account `.env` set up, you don't need to fill in course folders by hand. The importer reuses what scottie already pulls from the "JiaYi Courses" Drive folder for the Daybook:
+
+```bash
+# in the scottie checkout: download from Drive and extract text (no model calls, doesn't advance pacing)
+python -m drive_sync pull && python -m ingest
+
+# in ~/learning, with scottie's Python environment
+python .pi/tools/import_scottie.py --scottie ../scottie
+```
+
+Per course, this writes:
+
+- `syllabus.md`: exam dates from `courses.yaml` and the weekly schedule from `schedule.yaml`, inside a generated block. Anything you add outside that block (exam formats, grading notes) is kept on the next import.
+- `drive/*.md`: every PDF, slide deck and notes file in that course's Drive folder, already converted to text, so you can skip markitdown.
+
+Re-run both commands whenever you add files to Drive or change exam dates. Your progress (`review.md`, `flashcards.csv`) is never touched.
+
 ### 3. Study
 
 Open `pi` in `~/learning` and say what you want, e.g.:
@@ -90,6 +109,7 @@ What the tutor does:
 - `skills/review/` — *(this fork)* a review-only session over what's due
 - `agents/course-researcher.md` — *(this fork)* finds what your course materials say about a topic
 - `templates/course/` — *(this fork)* starter folder for a course
+- `tools/import_scottie.py` — *(this fork)* builds course folders from the Daybook's data (scottie)
 - `skills/visualize/` — adds a correct, minimal diagram to a lesson when an idea is clearer as a picture
 - `extensions/ask-user-question/` — the agent asks you questions through a UI popup
 - `extensions/quiz/` — graded questions with instant feedback (✓/✗, correct answer, explanation)
